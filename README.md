@@ -1,1 +1,315 @@
 # stock-market-game
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Trading Simulation</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --green: #10b981;
+            --red: #ef4444;
+            --accent: #6366f1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .balance-box h2 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .balance-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f59e0b;
+        }
+
+        .portfolio-value {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-top: 4px;
+        }
+
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .stock-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stock-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .stock-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .stock-ticker {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .stock-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .stock-change {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .stock-change.up { color: var(--green); }
+        .stock-change.down { color: var(--red); }
+
+        .holdings-info {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-buy {
+            background-color: var(--green);
+            color: white;
+        }
+
+        .btn-sell {
+            background-color: var(--red);
+            color: white;
+        }
+
+        .log-panel {
+            margin-top: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #334155;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .log-panel h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        .log-item {
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="balance-box">
+            <h2>Available Balance</h2>
+            <div class="balance-amount" id="balance">1,000.00 🪙</div>
+        </div>
+        <div style="text-align: right;">
+            <h2>Total Net Worth</h2>
+            <div class="portfolio-value" id="net-worth">1,000.00 🪙</div>
+        </div>
+    </header>
+
+    <div class="market-grid" id="market"></div>
+
+    <div class="log-panel">
+        <h3>Transaction History</h3>
+        <div id="logs"></div>
+    </div>
+</div>
+
+<script>
+    // Game State
+    let balance = 1000.00;
+    
+    const stocks = [
+        { id: 'tech', name: 'MacroSoft', ticker: 'MSFT', price: 150.00, lastPrice: 150.00, owned: 0, volatility: 0.04 },
+        { id: 'fruit', name: 'Pineapple Inc.', ticker: 'PNPL', price: 220.00, lastPrice: 220.00, owned: 0, volatility: 0.03 },
+        { id: 'car', name: 'Electro Wheels', ticker: 'EVWL', price: 85.00, lastPrice: 85.00, owned: 0, volatility: 0.07 },
+        { id: 'space', name: 'StarBound', ticker: 'STRB', price: 45.00, lastPrice: 45.00, owned: 0, volatility: 0.10 }
+    ];
+
+    function updateUI() {
+        // Calculate Total Portfolio value
+        let totalHoldingsValue = 0;
+        stocks.forEach(stock => {
+            totalHoldingsValue += stock.owned * stock.price;
+        });
+        
+        const netWorth = balance + totalHoldingsValue;
+        
+        document.getElementById('balance').innerText = `${balance.toFixed(2)} 🪙`;
+        document.getElementById('net-worth').innerText = `${netWorth.toFixed(2)} 🪙`;
+
+        const marketContainer = document.getElementById('market');
+        marketContainer.innerHTML = '';
+
+        stocks.forEach(stock => {
+            const change = stock.price - stock.lastPrice;
+            const changePercent = (change / stock.lastPrice) * 100;
+            const changeClass = change >= 0 ? 'up' : 'down';
+            const changeSign = change >= 0 ? '+' : '';
+
+            const card = document.createElement('div');
+            card.className = 'stock-card';
+            card.innerHTML = `
+                <div class="stock-info">
+                    <div>
+                        <div class="stock-name">${stock.name}</div>
+                        <span class="stock-ticker">${stock.ticker}</span>
+                    </div>
+                    <div>
+                        <div class="stock-price">${stock.price.toFixed(2)} 🪙</div>
+                        <div class="stock-change ${changeClass}">
+                            ${changeSign}${changePercent.toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+                <div class="holdings-info">
+                    <span>Owned: <b>${stock.owned}</b></span>
+                    <span>Value: <b>${(stock.owned * stock.price).toFixed(2)} 🪙</b></span>
+                </div>
+                <div class="actions">
+                    <button class="btn-buy" onclick="buyStock('${stock.id}')" ${balance < stock.price ? 'disabled' : ''}>Buy 1</button>
+                    <button class="btn-sell" onclick="sellStock('${stock.id}')" ${stock.owned <= 0 ? 'disabled' : ''}>Sell 1</button>
+                </div>
+            `;
+            marketContainer.appendChild(card);
+        });
+    }
+
+    function buyStock(id) {
+        const stock = stocks.find(s => s.id === id);
+        if (balance >= stock.price) {
+            balance -= stock.price;
+            stock.owned += 1;
+            addLog(`Bought 1 share of ${stock.ticker} for ${stock.price.toFixed(2)} 🪙`);
+            updateUI();
+        }
+    }
+
+    function sellStock(id) {
+        const stock = stocks.find(s => s.id === id);
+        if (stock.owned > 0) {
+            balance += stock.price;
+            stock.owned -= 1;
+            addLog(`Sold 1 share of ${stock.ticker} for ${stock.price.toFixed(2)} 🪙`);
+            updateUI();
+        }
+    }
+
+    function addLog(message) {
+        const logsContainer = document.getElementById('logs');
+        const timestamp = new Date().toLocaleTimeString();
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item';
+        logItem.innerText = `[${timestamp}] ${message}`;
+        logsContainer.insertBefore(logItem, logsContainer.firstChild);
+    }
+
+    // Simulate Market Price Fluctuations
+    function simulateMarket() {
+        stocks.forEach(stock => {
+            stock.lastPrice = stock.price;
+            // Random walk simulation logic
+            const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
+            stock.price = Math.max(1.00, stock.price * (1 + changePercent)); 
+        });
+        updateUI();
+    }
+
+    // Initialize and loop market ticks every 2.5 seconds
+    updateUI();
+    setInterval(simulateMarket, 2500);
+</script>
+
+</body>
+</html>
